@@ -231,18 +231,24 @@ export default function StudyRoadmap() {
 
   // Enhanced function to display a quiz modal with content
   const openQuiz = (quiz) => {
-    // In a real app, this would navigate to a quiz page or open a modal
-    // For now, we'll use a more detailed alert
-    const message = `
-      Starting: ${quiz.title}
+    console.log("Opening quiz:", quiz); // Debug statement to ensure function is being called
+    // Create a richer quiz display
+    const quizContent = `
+      QUIZ: ${quiz.title}
+      --------------------------------------
       Topic: ${quiz.topic}
       Difficulty: ${quiz.difficulty}
       Questions: ${quiz.questions}
-      Time: ${quiz.timeEstimate}
+      Estimated Time: ${quiz.timeEstimate}
       
-      This would open the full quiz interface in a real implementation.
-    `;
-    alert(message);
+      This would launch the interactive quiz interface
+      with multiple-choice questions in a real implementation.
+      
+      For this demo, consider it started!
+    `.trim();
+    
+    // Using window.alert ensures it's visible in all browsers
+    window.alert(quizContent);
     
     // For demo purposes, mark as completed after "taking" the quiz
     quiz.completed = true;
