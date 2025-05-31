@@ -1,23 +1,83 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { GraduationCap, Users, BookOpen, Brain, Video, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
-  const [selectedRole, setSelectedRole] = useState<'teacher' | 'student' | null>(null);
+  const { user, userMetadata, signIn, signUp } = useAuth();
   const navigate = useNavigate();
-
-  const handleRoleSelect = (role: 'teacher' | 'student') => {
-    setSelectedRole(role);
-    // In a real app, this would handle authentication flow
-    if (role === 'teacher') {
-      navigate('/teacher-dashboard');
+  const { toast } = useToast();
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  
+  // Form states
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState<'student' | 'teacher'>('student');
+  
+  const handleRoleSelect = (selectedRole: 'teacher' | 'student') => {
+    if (user) {
+      // If user is already authenticated, navigate directly
+      if (selectedRole === 'teacher') {
+        navigate('/teacher-dashboard');
+      } else {
+        navigate('/student-dashboard');
+      }
     } else {
-      navigate('/student-dashboard');
+      // Set the role for registration and open auth dialog
+      setRole(selectedRole);
+      setAuthDialogOpen(true);
     }
   };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await signIn(email, password);
+      setAuthDialogOpen(false);
+      
+      // Navigation is handled in the auth context after successful sign-in
+    } catch (error) {
+      console.error('Sign in error:', error);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await signUp(email, password, fullName, role);
+      toast({
+        title: 'Registration successful!',
+        description: 'Please check your email to verify your account.',
+      });
+      setAuthDialogOpen(false);
+    } catch (error) {
+      console.error('Sign up error:', error);
+    }
+  };
+  
+  // If user is already logged in, redirect based on role
+  if (user && userMetadata?.role) {
+    if (userMetadata.role === 'teacher') {
+      navigate('/teacher-dashboard');
+    } else if (userMetadata.role === 'student') {
+      navigate('/student-dashboard');
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -35,9 +95,100 @@ const Index = () => {
               <p className="text-sm text-gray-600">Personalized education powered by AI</p>
             </div>
           </div>
-          <Button variant="outline" className="hover:bg-blue-50">
-            Sign In
-          </Button>
+          <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="hover:bg-blue-50">
+                {user ? 'Dashboard' : 'Sign In'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Authentication</DialogTitle>
+              </DialogHeader>
+              <Tabs defaultValue="signin" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin">Sign In</TabsTrigger>
+                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
+                <TabsContent value="signin">
+                  <form onSubmit={handleSignIn} className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-email">Email</Label>
+                      <Input 
+                        id="signin-email" 
+                        type="email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-password">Password</Label>
+                      <Input 
+                        id="signin-password" 
+                        type="password" 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required 
+                      />
+                    </div>
+                    <Button type="submit" className="w-full">Sign In</Button>
+                  </form>
+                </TabsContent>
+                <TabsContent value="signup">
+                  <form onSubmit={handleSignUp} className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-name">Full Name</Label>
+                      <Input 
+                        id="signup-name" 
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email">Email</Label>
+                      <Input 
+                        id="signup-email" 
+                        type="email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password</Label>
+                      <Input 
+                        id="signup-password" 
+                        type="password" 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Role</Label>
+                      <RadioGroup 
+                        value={role} 
+                        onValueChange={(val) => setRole(val as 'student' | 'teacher')}
+                        className="flex space-x-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="student" id="student" />
+                          <Label htmlFor="student">Student</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="teacher" id="teacher" />
+                          <Label htmlFor="teacher">Teacher</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <Button type="submit" className="w-full">Sign Up</Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
         </div>
       </header>
 
@@ -142,16 +293,14 @@ const Index = () => {
         <div className="container mx-auto px-4 text-center">
           <h3 className="text-3xl font-bold text-gray-900 mb-6">Ready to Transform Education?</h3>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Connect with Supabase to unlock authentication, database storage, and full AI-powered features.
+            Our AI-powered education platform connects teachers and students for personalized learning experiences.
           </p>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-2xl mx-auto">
-            <p className="text-blue-800 mb-4 font-medium">
-              🚀 To enable backend functionality (authentication, file storage, AI analysis), click the green Supabase button in the top right to connect your database.
-            </p>
-            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              Get Started
-            </Button>
-          </div>
+          <Button 
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            onClick={() => setAuthDialogOpen(true)}
+          >
+            Get Started
+          </Button>
         </div>
       </section>
     </div>

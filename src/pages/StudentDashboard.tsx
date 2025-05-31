@@ -1,40 +1,129 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, Brain, Video, Award, AlertCircle, ArrowLeft, Calendar } from 'lucide-react';
+import { BookOpen, Brain, Video, Award, AlertCircle, ArrowLeft, Calendar, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { getClassroomsByStudent, getStudentAssignments, getStudentWeakTopics, getPersonalizedRecommendations, joinClassroom } from '@/lib/api';
+import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+interface Classroom {
+  id: string;
+  name: string;
+  description: string | null;
+  teacher_id: string;
+  class_code: string;
+  created_at: string;
+}
+
+interface Assignment {
+  id: string;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  classrooms: { name: string } | null;
+}
+
+interface WeakTopic {
+  id: string;
+  topic_name: string;
+  confidence_score: number | null;
+  assignments: { title: string } | null;
+}
+
+interface Recommendation {
+  id: string;
+  recommendation_type: 'youtube_video' | 'resource_link' | 'study_plan_item' | 'quiz';
+  title: string;
+  student_weak_topics: { topic_name: string } | null;
+}
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
+  const { user, userMetadata } = useAuth();
+  const { toast } = useToast();
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
+  const [classCode, setClassCode] = useState('');
 
-  // Mock data - in real app this would come from Supabase
-  const joinedClassrooms = [
-    { id: '1', name: 'Computer Science 101', teacher: 'Dr. Smith', assignments: 3, code: 'CS101A' },
-    { id: '2', name: 'Data Structures', teacher: 'Prof. Johnson', assignments: 2, code: 'DS2024' }
-  ];
+  // Load data from Supabase
+  useEffect(() => {
+    async function loadData() {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        
+        // Get classrooms
+        const studentClassrooms = await getClassroomsByStudent(user.id);
+        setClassrooms(studentClassrooms);
+        
+        // Get assignments
+        const studentAssignments = await getStudentAssignments(user.id);
+        setAssignments(studentAssignments);
+        
+        // Get weak topics
+        const topics = await getStudentWeakTopics(user.id);
+        setWeakTopics(topics);
+        
+        // Get recommendations
+        const recs = await getPersonalizedRecommendations(user.id);
+        setRecommendations(recs);
+      } catch (error) {
+        console.error('Error loading student data:', error);
+        toast({
+          title: 'Failed to load data',
+          description: 'There was an error loading your dashboard data',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const upcomingAssignments = [
-    { id: '1', title: 'Process Scheduling Analysis', classroom: 'Operating Systems', dueDate: '2024-01-15', status: 'pending' },
-    { id: '2', title: 'Binary Tree Implementation', classroom: 'Data Structures', dueDate: '2024-01-18', status: 'submitted' },
-    { id: '3', title: 'Database Normalization', classroom: 'Database Systems', dueDate: '2024-01-20', status: 'pending' }
-  ];
+    loadData();
+  }, [user, toast]);
 
-  const weakTopics = [
-    { id: '1', topic: 'Process Synchronization', subject: 'Operating Systems', confidence: 40, recommendations: 8 },
-    { id: '2', topic: 'Tree Traversal', subject: 'Data Structures', confidence: 65, recommendations: 5 },
-    { id: '3', topic: 'SQL Joins', subject: 'Database Systems', confidence: 30, recommendations: 12 }
-  ];
+  // Handle joining a classroom
+  const handleJoinClassroom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    try {
+      await joinClassroom(classCode, user.id);
+      
+      // Refresh classrooms
+      const updatedClassrooms = await getClassroomsByStudent(user.id);
+      setClassrooms(updatedClassrooms);
+      
+      setClassCode('');
+      setJoinDialogOpen(false);
+      
+      toast({
+        title: 'Classroom joined',
+        description: 'You have successfully joined the classroom'
+      });
+    } catch (error: any) {
+      console.error('Error joining classroom:', error);
+      toast({
+        title: 'Failed to join classroom',
+        description: error.message || 'There was an error joining the classroom',
+        variant: 'destructive'
+      });
+    }
+  };
 
-  const recentRecommendations = [
-    { id: '1', type: 'video', title: 'Process Synchronization Explained', topic: 'Process Synchronization' },
-    { id: '2', type: 'quiz', title: 'Tree Traversal Practice Quiz', topic: 'Tree Traversal' },
-    { id: '3', type: 'resource', title: 'SQL Joins Tutorial', topic: 'SQL Joins' }
-  ];
-
-  const getConfidenceColor = (confidence: number) => {
+  const getConfidenceColor = (confidence: number | null) => {
+    if (!confidence) return 'bg-gray-500';
     if (confidence < 50) return 'bg-red-500';
     if (confidence < 75) return 'bg-yellow-500';
     return 'bg-green-500';
@@ -42,12 +131,19 @@ const StudentDashboard = () => {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'video': return <Video className="h-4 w-4" />;
+      case 'youtube_video': return <Video className="h-4 w-4" />;
       case 'quiz': return <Award className="h-4 w-4" />;
-      case 'resource': return <BookOpen className="h-4 w-4" />;
+      case 'resource_link': return <BookOpen className="h-4 w-4" />;
+      case 'study_plan_item': return <Brain className="h-4 w-4" />;
       default: return <Brain className="h-4 w-4" />;
     }
   };
+
+  // Redirect if not a student
+  if (user && userMetadata?.role !== 'student') {
+    navigate('/');
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
@@ -66,13 +162,36 @@ const StudentDashboard = () => {
             </Button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Student Dashboard</h1>
-              <p className="text-sm text-gray-600">Welcome back, Sarah!</p>
+              <p className="text-sm text-gray-600">Welcome back, {userMetadata?.full_name || 'Student'}!</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <Button variant="outline" size="sm">
-              Join Classroom
-            </Button>
+            <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Join Classroom
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Join a Classroom</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleJoinClassroom} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="class-code">Class Code</Label>
+                    <Input 
+                      id="class-code" 
+                      value={classCode}
+                      onChange={(e) => setClassCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. ABC123"
+                      required 
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">Join Classroom</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
             <Button 
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               onClick={() => navigate('/learning-hub')}
@@ -95,8 +214,12 @@ const StudentDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-purple-600">8</div>
-              <p className="text-sm text-gray-600 mt-1">3 pending, 5 completed</p>
+              <div className="text-3xl font-bold text-purple-600">
+                {loading ? '...' : assignments.length}
+              </div>
+              <p className="text-sm text-gray-600 mt-1">
+                {loading ? 'Loading...' : `${assignments.length} total assignments`}
+              </p>
             </CardContent>
           </Card>
 
@@ -108,7 +231,9 @@ const StudentDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-red-600">3</div>
+              <div className="text-3xl font-bold text-red-600">
+                {loading ? '...' : weakTopics.length}
+              </div>
               <p className="text-sm text-gray-600 mt-1">Need improvement</p>
             </CardContent>
           </Card>
@@ -121,7 +246,9 @@ const StudentDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-600">25</div>
+              <div className="text-3xl font-bold text-green-600">
+                {loading ? '...' : recommendations.length}
+              </div>
               <p className="text-sm text-gray-600 mt-1">Personalized for you</p>
             </CardContent>
           </Card>
@@ -133,58 +260,84 @@ const StudentDashboard = () => {
             {/* My Classrooms */}
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">My Classrooms</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {joinedClassrooms.map((classroom) => (
-                  <Card 
-                    key={classroom.id} 
-                    className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
-                    onClick={() => navigate(`/classroom/${classroom.id}`)}
-                  >
-                    <CardHeader>
-                      <CardTitle className="text-lg">{classroom.name}</CardTitle>
-                      <CardDescription>
-                        {classroom.teacher} • {classroom.assignments} assignments
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                          {classroom.code}
-                        </Badge>
-                        <Button size="sm" variant="ghost">
-                          View
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              {loading ? (
+                <div className="text-center py-12 text-gray-500">Loading classrooms...</div>
+              ) : classrooms.length === 0 ? (
+                <Card className="border-dashed border-2 border-gray-200">
+                  <CardContent className="p-6 text-center">
+                    <div className="text-gray-500 mb-2">No classrooms joined yet</div>
+                    <div className="text-sm text-gray-400 mb-4">Join a classroom to see assignments and resources</div>
+                    <Button onClick={() => setJoinDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Join Classroom
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {classrooms.map((classroom) => (
+                    <Card 
+                      key={classroom.id} 
+                      className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
+                      onClick={() => navigate(`/classroom/${classroom.id}`)}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-lg">{classroom.name}</CardTitle>
+                        <CardDescription>
+                          {classroom.description || 'No description provided'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                            {classroom.class_code}
+                          </Badge>
+                          <Button size="sm" variant="ghost">
+                            View
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Upcoming Assignments */}
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Upcoming Assignments</h2>
-              <div className="space-y-4">
-                {upcomingAssignments.map((assignment) => (
-                  <Card key={assignment.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-gray-900">{assignment.title}</div>
-                        <Badge 
-                          className={assignment.status === 'submitted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}
-                        >
-                          {assignment.status}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-gray-600 mb-1">{assignment.classroom}</div>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        Due: {assignment.dueDate}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              {loading ? (
+                <div className="text-center py-12 text-gray-500">Loading assignments...</div>
+              ) : assignments.length === 0 ? (
+                <Card className="border-dashed border-2 border-gray-200">
+                  <CardContent className="p-6 text-center">
+                    <div className="text-gray-500 mb-2">No assignments yet</div>
+                    <div className="text-sm text-gray-400">Join classrooms to see assignments</div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {assignments.map((assignment) => (
+                    <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="font-medium text-gray-900">{assignment.title}</div>
+                          <Badge className="bg-yellow-100 text-yellow-800">
+                            pending
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-gray-600 mb-1">{assignment.classrooms?.name || 'Unknown classroom'}</div>
+                        {assignment.due_date && (
+                          <div className="flex items-center text-xs text-gray-500">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            Due: {new Date(assignment.due_date).toLocaleDateString()}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -193,56 +346,80 @@ const StudentDashboard = () => {
             {/* Weak Topics Analysis */}
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-6">Topics to Improve</h2>
-              <div className="space-y-4">
-                {weakTopics.map((topic) => (
-                  <Card key={topic.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="mb-3">
-                        <div className="font-medium text-gray-900 mb-1">{topic.topic}</div>
-                        <div className="text-sm text-gray-600">{topic.subject}</div>
-                      </div>
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between text-sm mb-1">
-                          <span>Confidence Level</span>
-                          <span>{topic.confidence}%</span>
+              {loading ? (
+                <div className="text-center py-12 text-gray-500">Loading topics...</div>
+              ) : weakTopics.length === 0 ? (
+                <Card className="border-dashed border-2 border-gray-200">
+                  <CardContent className="p-6 text-center">
+                    <div className="text-gray-500 mb-2">No weak topics identified yet</div>
+                    <div className="text-sm text-gray-400">Submit assignments to get AI analysis</div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {weakTopics.map((topic) => (
+                    <Card key={topic.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="mb-3">
+                          <div className="font-medium text-gray-900 mb-1">{topic.topic_name}</div>
+                          <div className="text-sm text-gray-600">{topic.assignments?.title || 'Unknown assignment'}</div>
                         </div>
-                        <Progress 
-                          value={topic.confidence} 
-                          className="h-2"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">{topic.recommendations} recommendations</span>
-                        <Button size="sm" variant="outline">
-                          Study Now
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between text-sm mb-1">
+                            <span>Confidence Level</span>
+                            <span>{topic.confidence_score || 0}%</span>
+                          </div>
+                          <Progress 
+                            value={topic.confidence_score || 0} 
+                            className="h-2"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Needs improvement</span>
+                          <Button size="sm" variant="outline">
+                            Study Now
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Recent Recommendations */}
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-6">New Recommendations</h2>
-              <div className="space-y-3">
-                {recentRecommendations.map((rec) => (
-                  <Card key={rec.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex items-start space-x-3">
-                        <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                          {getTypeIcon(rec.type)}
+              {loading ? (
+                <div className="text-center py-12 text-gray-500">Loading recommendations...</div>
+              ) : recommendations.length === 0 ? (
+                <Card className="border-dashed border-2 border-gray-200">
+                  <CardContent className="p-6 text-center">
+                    <div className="text-gray-500 mb-2">No recommendations yet</div>
+                    <div className="text-sm text-gray-400">Submit assignments to get personalized recommendations</div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {recommendations.map((rec) => (
+                    <Card key={rec.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                      <CardContent className="p-4">
+                        <div className="flex items-start space-x-3">
+                          <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                            {getTypeIcon(rec.recommendation_type)}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900 text-sm">{rec.title}</div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              {rec.student_weak_topics?.topic_name || 'General recommendation'}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900 text-sm">{rec.title}</div>
-                          <div className="text-xs text-gray-600 mt-1">{rec.topic}</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

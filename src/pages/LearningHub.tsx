@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,123 +7,140 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Brain, Video, BookOpen, Award, Search, Play, ArrowLeft, MessageCircle, Languages } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/components/ui/use-toast';
+import { 
+  getVideoRecommendations, 
+  getStudyPlans, 
+  getQuizzes, 
+  getLearningResources, 
+  getStudentWeakTopics 
+} from '@/lib/api';
+
+interface VideoRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  topic: string;
+  thumbnail: string;
+  url: string;
+  details: any;
+}
+
+interface StudyPlan {
+  id: string;
+  title: string;
+  topic: string;
+  progress: number;
+  totalSteps: number;
+  completedSteps: number;
+  nextStep: string;
+  estimatedTime: string;
+}
+
+interface Quiz {
+  id: string;
+  title: string;
+  topic: string;
+  questions: number;
+  difficulty: string;
+  estimatedTime: string;
+  attempts: number;
+}
+
+interface Resource {
+  id: string;
+  title: string;
+  topic: string;
+  type: string;
+  url: string;
+  description: string;
+}
 
 const LearningHub = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [videoRecommendations, setVideoRecommendations] = useState<VideoRecommendation[]>([]);
+  const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for personalized recommendations
-  const videoRecommendations = [
-    {
-      id: '1',
-      title: 'Process Synchronization in Operating Systems',
-      channel: 'CS Concepts',
-      duration: '15:32',
-      views: '125K',
-      topic: 'Process Synchronization',
-      thumbnail: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop',
-      description: 'Complete guide to process synchronization with semaphores and monitors'
-    },
-    {
-      id: '2',
-      title: 'Binary Tree Traversal Methods Explained',
-      channel: 'Data Structure Academy',
-      duration: '12:45',
-      views: '89K',
-      topic: 'Tree Traversal',
-      thumbnail: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=300&h=200&fit=crop',
-      description: 'In-depth explanation of pre-order, in-order, and post-order traversal'
-    },
-    {
-      id: '3',
-      title: 'SQL Joins Masterclass',
-      channel: 'Database Pro',
-      duration: '18:21',
-      views: '234K',
-      topic: 'SQL Joins',
-      thumbnail: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=300&h=200&fit=crop',
-      description: 'Master all types of SQL joins with practical examples'
+  // Load data from Supabase
+  useEffect(() => {
+    async function loadData() {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        
+        // Get video recommendations
+        const videos = await getVideoRecommendations(user.id);
+        setVideoRecommendations(videos);
+        
+        // Get study plans
+        const plans = await getStudyPlans(user.id);
+        setStudyPlans(plans);
+        
+        // Get quizzes
+        const quizData = await getQuizzes(user.id);
+        setQuizzes(quizData);
+        
+        // Get resources
+        const resourcesData = await getLearningResources(user.id);
+        setResources(resourcesData);
+      } catch (error) {
+        console.error('Error loading learning data:', error);
+        toast({
+          title: 'Failed to load data',
+          description: 'There was an error loading your learning resources',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
 
-  const studyPlans = [
-    {
-      id: '1',
-      topic: 'Process Synchronization',
-      progress: 40,
-      totalSteps: 8,
-      completedSteps: 3,
-      nextStep: 'Read about Semaphores',
-      estimatedTime: '2 hours'
-    },
-    {
-      id: '2',
-      topic: 'Tree Traversal',
-      progress: 75,
-      totalSteps: 6,
-      completedSteps: 4,
-      nextStep: 'Practice traversal algorithms',
-      estimatedTime: '1 hour'
-    }
-  ];
+    loadData();
+  }, [user, toast]);
 
-  const quizzes = [
-    {
-      id: '1',
-      title: 'Process Synchronization Quiz',
-      topic: 'Process Synchronization',
-      questions: 10,
-      difficulty: 'Medium',
-      estimatedTime: '15 min',
-      attempts: 0
-    },
-    {
-      id: '2',
-      title: 'Binary Tree Basics',
-      topic: 'Tree Traversal',
-      questions: 8,
-      difficulty: 'Easy',
-      estimatedTime: '12 min',
-      attempts: 2
-    },
-    {
-      id: '3',
-      title: 'Advanced SQL Joins',
-      topic: 'SQL Joins',
-      questions: 15,
-      difficulty: 'Hard',
-      estimatedTime: '20 min',
-      attempts: 1
-    }
-  ];
+  // Filter resources based on search query
+  const filteredVideos = searchQuery
+    ? videoRecommendations.filter(
+        video => video.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        video.topic.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : videoRecommendations;
 
-  const resources = [
-    {
-      id: '1',
-      title: 'Operating Systems: Three Easy Pieces',
-      type: 'Book',
-      url: '#',
-      topic: 'Process Synchronization',
-      description: 'Comprehensive textbook chapter on synchronization'
-    },
-    {
-      id: '2',
-      title: 'GeeksforGeeks: Tree Traversal',
-      type: 'Article',
-      url: '#',
-      topic: 'Tree Traversal',
-      description: 'Detailed article with code examples'
-    },
-    {
-      id: '3',
-      title: 'W3Schools SQL Tutorial',
-      type: 'Interactive',
-      url: '#',
-      topic: 'SQL Joins',
-      description: 'Interactive SQL tutorial with examples'
-    }
-  ];
+  const filteredStudyPlans = searchQuery
+    ? studyPlans.filter(
+        plan => plan.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        plan.title?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : studyPlans;
+
+  const filteredQuizzes = searchQuery
+    ? quizzes.filter(
+        quiz => quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        quiz.topic.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : quizzes;
+
+  const filteredResources = searchQuery
+    ? resources.filter(
+        resource => resource.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        resource.topic.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : resources;
+
+  // Redirect if not logged in or not a student
+  if (!user) {
+    navigate('/');
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
@@ -192,49 +208,44 @@ const LearningHub = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {videoRecommendations.map((video) => (
-                <Card key={video.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer">
-                  <div className="relative">
-                    <img 
-                      src={video.thumbnail} 
-                      alt={video.title}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                    <div className="absolute inset-0 bg-black/20 rounded-t-lg flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <Button size="lg" className="rounded-full">
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Loading video recommendations...</div>
+            ) : filteredVideos.length === 0 ? (
+              <Card className="border-dashed border-2 border-gray-200">
+                <CardContent className="p-6 text-center">
+                  <div className="text-gray-500 mb-2">No video recommendations yet</div>
+                  <div className="text-sm text-gray-400">
+                    {searchQuery ? 'No videos match your search query' : 'Submit assignments to get personalized video recommendations'}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredVideos.map((video) => (
+                  <Card key={video.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer">
+                    <div className="relative">
+                      <img 
+                        src={video.thumbnail} 
+                        alt={video.title} 
+                        className="w-full h-40 object-cover rounded-t-lg" 
+                      />
+                      <Button 
+                        size="icon" 
+                        className="absolute inset-0 m-auto bg-purple-600 hover:bg-purple-700 rounded-full w-12 h-12 opacity-80"
+                        onClick={() => setSelectedVideo(video.id)}
+                      >
                         <Play className="h-6 w-6" />
                       </Button>
+                      <Badge className="absolute top-2 right-2 bg-blue-600">{video.topic}</Badge>
                     </div>
-                    <Badge className="absolute top-2 right-2 bg-black/70 text-white">
-                      {video.duration}
-                    </Badge>
-                  </div>
-                  <CardHeader>
-                    <CardTitle className="text-lg line-clamp-2">{video.title}</CardTitle>
-                    <CardDescription>{video.channel} • {video.views} views</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{video.description}</p>
-                    <div className="flex items-center justify-between">
-                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                        {video.topic}
-                      </Badge>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline">
-                          <MessageCircle className="h-4 w-4 mr-1" />
-                          Q&A
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Languages className="h-4 w-4 mr-1" />
-                          Translate
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-medium text-lg mb-1 line-clamp-2">{video.title}</h3>
+                      <p className="text-gray-600 text-sm line-clamp-2">{video.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Study Plans Tab */}
@@ -242,37 +253,53 @@ const LearningHub = () => {
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Personalized Study Plans</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                Structured learning paths tailored to your identified weak topics
+                Step-by-step learning paths tailored to help you improve on specific topics
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {studyPlans.map((plan) => (
-                <Card key={plan.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      {plan.topic}
-                      <Badge variant="secondary">{plan.completedSteps}/{plan.totalSteps} steps</Badge>
-                    </CardTitle>
-                    <CardDescription>Estimated time: {plan.estimatedTime}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span>Progress</span>
-                        <span>{plan.progress}%</span>
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Loading study plans...</div>
+            ) : filteredStudyPlans.length === 0 ? (
+              <Card className="border-dashed border-2 border-gray-200">
+                <CardContent className="p-6 text-center">
+                  <div className="text-gray-500 mb-2">No study plans available yet</div>
+                  <div className="text-sm text-gray-400">
+                    {searchQuery ? 'No study plans match your search query' : 'Complete assignments to get personalized study plans'}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {filteredStudyPlans.map((plan) => (
+                  <Card key={plan.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <Badge className="mb-2 bg-purple-100 text-purple-800">{plan.topic}</Badge>
+                          <CardTitle className="text-xl">{plan.title || 'Study Plan'}</CardTitle>
+                          <CardDescription>Progress: {plan.completedSteps}/{plan.totalSteps} steps completed</CardDescription>
+                        </div>
+                        <Badge variant="outline">{plan.estimatedTime}</Badge>
                       </div>
-                      <Progress value={plan.progress} className="h-2" />
-                    </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <div className="text-sm font-medium text-blue-900 mb-1">Next Step:</div>
-                      <div className="text-sm text-blue-700">{plan.nextStep}</div>
-                    </div>
-                    <Button className="w-full">Continue Learning</Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="mb-4">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-gray-600">Completion</span>
+                          <span className="font-medium">{Math.round(plan.progress)}%</span>
+                        </div>
+                        <Progress value={plan.progress} className="h-2" />
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-lg mb-4">
+                        <h4 className="text-sm font-medium text-blue-800 mb-1">Next Step:</h4>
+                        <p className="text-sm text-blue-700">{plan.nextStep}</p>
+                      </div>
+                      <Button className="w-full">Continue Learning</Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Quizzes Tab */}
@@ -280,44 +307,51 @@ const LearningHub = () => {
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Practice Quizzes</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                Test your knowledge with AI-generated quizzes based on your learning needs
+                Test your knowledge with adaptive quizzes focused on strengthening your weak areas
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {quizzes.map((quiz) => (
-                <Card key={quiz.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105">
-                  <CardHeader>
-                    <CardTitle className="text-lg">{quiz.title}</CardTitle>
-                    <CardDescription>{quiz.questions} questions • {quiz.estimatedTime}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                        {quiz.topic}
-                      </Badge>
-                      <Badge 
-                        className={
-                          quiz.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
-                          quiz.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }
-                      >
-                        {quiz.difficulty}
-                      </Badge>
-                    </div>
-                    {quiz.attempts > 0 && (
-                      <div className="text-sm text-gray-600">
-                        Previous attempts: {quiz.attempts}
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Loading quizzes...</div>
+            ) : filteredQuizzes.length === 0 ? (
+              <Card className="border-dashed border-2 border-gray-200">
+                <CardContent className="p-6 text-center">
+                  <div className="text-gray-500 mb-2">No quizzes available yet</div>
+                  <div className="text-sm text-gray-400">
+                    {searchQuery ? 'No quizzes match your search query' : 'Complete assignments to get recommended quizzes'}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {filteredQuizzes.map((quiz) => (
+                  <Card key={quiz.id} className="hover:shadow-lg transition-all duration-300 hover:scale-105">
+                    <CardHeader className="pb-3">
+                      <Badge className="mb-2 bg-blue-100 text-blue-800">{quiz.topic}</Badge>
+                      <CardTitle>{quiz.title}</CardTitle>
+                      <CardDescription>
+                        {quiz.questions} questions • {quiz.estimatedTime}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between mb-4">
+                        <Badge variant="outline" className={
+                          quiz.difficulty === 'Easy' ? 'border-green-200 text-green-800' :
+                          quiz.difficulty === 'Medium' ? 'border-yellow-200 text-yellow-800' :
+                          'border-red-200 text-red-800'
+                        }>
+                          {quiz.difficulty}
+                        </Badge>
+                        <span className="text-sm text-gray-500">
+                          {quiz.attempts} {quiz.attempts === 1 ? 'attempt' : 'attempts'}
+                        </span>
                       </div>
-                    )}
-                    <Button className="w-full">
-                      {quiz.attempts === 0 ? 'Start Quiz' : 'Retake Quiz'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      <Button className="w-full">Start Quiz</Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Resources Tab */}
@@ -325,30 +359,45 @@ const LearningHub = () => {
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Learning Resources</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                Curated articles, books, and interactive content to deepen your understanding
+                Curated articles, books, and interactive tutorials to help deepen your understanding
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {resources.map((resource) => (
-                <Card key={resource.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg line-clamp-2">{resource.title}</CardTitle>
-                      <Badge variant="outline">{resource.type}</Badge>
-                    </div>
-                    <CardDescription>Related to: {resource.topic}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-3">{resource.description}</p>
-                    <Button className="w-full" variant="outline">
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      View Resource
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Loading resources...</div>
+            ) : filteredResources.length === 0 ? (
+              <Card className="border-dashed border-2 border-gray-200">
+                <CardContent className="p-6 text-center">
+                  <div className="text-gray-500 mb-2">No resources available yet</div>
+                  <div className="text-sm text-gray-400">
+                    {searchQuery ? 'No resources match your search query' : 'Complete assignments to get recommended resources'}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredResources.map((resource) => (
+                  <Card key={resource.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <Badge className="bg-purple-100 text-purple-800">{resource.topic}</Badge>
+                        <Badge variant="outline">{resource.type}</Badge>
+                      </div>
+                      <CardTitle className="text-lg">{resource.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{resource.description}</p>
+                      <Button className="w-full" variant="outline" asChild>
+                        <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                          <BookOpen className="h-4 w-4 mr-2" />
+                          View Resource
+                        </a>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
