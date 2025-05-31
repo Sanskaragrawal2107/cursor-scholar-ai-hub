@@ -16,9 +16,277 @@ import {
   Award
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+
+// Quiz modal component to display interactive quiz
+const QuizModal = ({ isOpen, setIsOpen, quiz }) => {
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState({});
+  const [showResults, setShowResults] = useState(false);
+  const [score, setScore] = useState(0);
+
+  // Generate questions based on quiz topic
+  const quizQuestions = React.useMemo(() => {
+    if (!quiz) return [];
+
+    // Generate questions based on topic
+    if (quiz.topic === "CPU Scheduling") {
+      return [
+        {
+          question: "Which scheduling algorithm is non-preemptive?",
+          options: ["Round Robin", "Shortest Job First", "Priority Scheduling", "All of the above"],
+          correctAnswer: "Shortest Job First"
+        },
+        {
+          question: "Which scheduling algorithm is best for time-sharing systems?",
+          options: ["FCFS", "Round Robin", "SJF", "Priority Scheduling"],
+          correctAnswer: "Round Robin"
+        },
+        {
+          question: "What is the average waiting time for FCFS with processes P1(0,5), P2(1,3), P3(2,1) arriving in order P1, P2, P3?",
+          options: ["2.33", "3.0", "2.0", "2.67"],
+          correctAnswer: "2.67"
+        }
+      ];
+    } else if (quiz.topic === "Deadlocks") {
+      return [
+        {
+          question: "Which is NOT a necessary condition for deadlock?",
+          options: ["Mutual Exclusion", "Hold and Wait", "Concurrent Execution", "Circular Wait"],
+          correctAnswer: "Concurrent Execution"
+        },
+        {
+          question: "Deadlock prevention aims to:",
+          options: ["Avoid deadlock after it occurs", "Detect deadlock and recover", "Ensure at least one necessary condition can't hold", "None of the above"],
+          correctAnswer: "Ensure at least one necessary condition can't hold"
+        },
+        {
+          question: "The banker's algorithm is used for:",
+          options: ["Deadlock prevention", "Deadlock detection", "Deadlock recovery", "Deadlock avoidance"],
+          correctAnswer: "Deadlock avoidance"
+        }
+      ];
+    } else if (quiz.topic === "Memory Management") {
+      return [
+        {
+          question: "What is fragmentation in memory management?",
+          options: ["Memory that's allocated but not used", "Memory that's used but not allocated", "Memory that's corrupted", "None of the above"],
+          correctAnswer: "Memory that's allocated but not used"
+        },
+        {
+          question: "Which page replacement algorithm suffers from Belady's anomaly?",
+          options: ["LRU", "FIFO", "Optimal", "MRU"],
+          correctAnswer: "FIFO"
+        },
+        {
+          question: "What is thrashing in virtual memory?",
+          options: ["Excessive page faults", "Excessive fragments", "Excessive memory usage", "Excessive CPU usage"],
+          correctAnswer: "Excessive page faults"
+        }
+      ];
+    } else if (quiz.topic === "File Systems") {
+      return [
+        {
+          question: "Which of the following is NOT a file allocation method?",
+          options: ["Contiguous Allocation", "Linked Allocation", "Indexed Allocation", "Page Allocation"],
+          correctAnswer: "Page Allocation"
+        },
+        {
+          question: "In which directory structure does each file have a unique path?",
+          options: ["Single-level Directory", "Two-level Directory", "Tree-structured Directory", "All of the above"],
+          correctAnswer: "Tree-structured Directory"
+        },
+        {
+          question: "What is a journaling file system?",
+          options: ["A system that records all file operations", "A system that logs changes before committing them", "A file system that keeps multiple backups", "A file system for storing personal journals"],
+          correctAnswer: "A system that logs changes before committing them"
+        }
+      ];
+    } else {
+      // Default questions
+      return [
+        {
+          question: `What is the main concept of "${quiz.topic}"?`,
+          options: ["Option A", "Option B", "Option C", "Option D"],
+          correctAnswer: "Option B"
+        },
+        {
+          question: `Which of the following is true about ${quiz.topic}?`,
+          options: ["Statement 1", "Statement 2", "Statement 3", "Statement 4"],
+          correctAnswer: "Statement 3"
+        },
+        {
+          question: `Why is ${quiz.topic} important in operating systems?`,
+          options: ["Reason 1", "Reason 2", "Reason 3", "Reason 4"],
+          correctAnswer: "Reason 2"
+        }
+      ];
+    }
+  }, [quiz]);
+
+  const handleAnswerSelect = (answer) => {
+    setSelectedAnswers({
+      ...selectedAnswers,
+      [currentQuestion]: answer
+    });
+  };
+
+  const handleNext = () => {
+    if (currentQuestion < quizQuestions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      // Calculate score
+      let correctAnswers = 0;
+      quizQuestions.forEach((q, index) => {
+        if (selectedAnswers[index] === q.correctAnswer) {
+          correctAnswers++;
+        }
+      });
+      setScore(correctAnswers);
+      setShowResults(true);
+    }
+  };
+
+  const handleTryAgain = () => {
+    setCurrentQuestion(0);
+    setSelectedAnswers({});
+    setShowResults(false);
+  };
+
+  const handleFinish = () => {
+    // Mark quiz as completed
+    if (quiz) {
+      quiz.completed = true;
+    }
+    setIsOpen(false);
+    // Reset state for next time
+    setTimeout(() => {
+      setCurrentQuestion(0);
+      setSelectedAnswers({});
+      setShowResults(false);
+    }, 300);
+  };
+
+  if (!quiz) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-md md:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-xl text-center">
+            {!showResults ? (
+              <span>{quiz.title}</span>
+            ) : (
+              <span>Quiz Results</span>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+
+        {!showResults ? (
+          <>
+            <div className="py-4">
+              <div className="flex justify-between text-sm text-gray-500 mb-2">
+                <span>Question {currentQuestion + 1} of {quizQuestions.length}</span>
+                <span>
+                  <Badge className={`${quiz.difficulty === 'Easy' ? 'bg-green-100 text-green-800' : quiz.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                    {quiz.difficulty}
+                  </Badge>
+                </span>
+              </div>
+              <Progress 
+                value={(currentQuestion + 1) / quizQuestions.length * 100} 
+                className="h-2 mb-6"
+              />
+              
+              <h3 className="text-lg font-medium mb-4">
+                {quizQuestions[currentQuestion]?.question}
+              </h3>
+              
+              <RadioGroup 
+                value={selectedAnswers[currentQuestion] || ""} 
+                onValueChange={handleAnswerSelect}
+                className="space-y-3"
+              >
+                {quizQuestions[currentQuestion]?.options.map((option, i) => (
+                  <div key={i} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-gray-50">
+                    <RadioGroupItem value={option} id={`option-${i}`} />
+                    <Label htmlFor={`option-${i}`} className="flex-grow cursor-pointer">{option}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                disabled={!selectedAnswers[currentQuestion]}
+                onClick={handleNext}
+                className="w-full"
+              >
+                {currentQuestion < quizQuestions.length - 1 ? 'Next Question' : 'Submit Quiz'}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <div className="py-4 text-center">
+              <div className="mb-6">
+                <div className="text-5xl font-bold mb-2">
+                  {score}/{quizQuestions.length}
+                </div>
+                <p className="text-gray-500">
+                  {score === quizQuestions.length ? 'Perfect score! Excellent work!' : 
+                   score >= quizQuestions.length * 0.7 ? 'Good job! Keep practicing!' :
+                   'Keep studying and try again!'}
+                </p>
+              </div>
+              
+              {quizQuestions.map((q, i) => (
+                <div key={i} className="mb-4 text-left border-b pb-4">
+                  <p className="font-medium">{i + 1}. {q.question}</p>
+                  <div className="flex items-center mt-2">
+                    <span className="mr-2">Your answer:</span>
+                    <Badge 
+                      variant="outline" 
+                      className={selectedAnswers[i] === q.correctAnswer ? 
+                        "bg-green-100 text-green-800 border-green-200" : 
+                        "bg-red-100 text-red-800 border-red-200"}
+                    >
+                      {selectedAnswers[i] || "No answer"}
+                    </Badge>
+                  </div>
+                  {selectedAnswers[i] !== q.correctAnswer && (
+                    <div className="flex items-center mt-1">
+                      <span className="mr-2">Correct answer:</span>
+                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                        {q.correctAnswer}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            <DialogFooter className="flex flex-row space-x-2">
+              <Button variant="outline" onClick={handleTryAgain} className="flex-1">
+                Try Again
+              </Button>
+              <Button onClick={handleFinish} className="flex-1">
+                Finish
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default function StudyRoadmap() {
   const [activeTab, setActiveTab] = useState('roadmap');
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
   
   // This would normally come from your database/API
   const roadmapData = {
@@ -229,29 +497,10 @@ export default function StudyRoadmap() {
     return <FileText className="h-4 w-4" />;
   };
 
-  // Enhanced function to display a quiz modal with content
+  // Enhanced function to open a quiz
   const openQuiz = (quiz) => {
-    console.log("Opening quiz:", quiz); // Debug statement to ensure function is being called
-    // Create a richer quiz display
-    const quizContent = `
-      QUIZ: ${quiz.title}
-      --------------------------------------
-      Topic: ${quiz.topic}
-      Difficulty: ${quiz.difficulty}
-      Questions: ${quiz.questions}
-      Estimated Time: ${quiz.timeEstimate}
-      
-      This would launch the interactive quiz interface
-      with multiple-choice questions in a real implementation.
-      
-      For this demo, consider it started!
-    `.trim();
-    
-    // Using window.alert ensures it's visible in all browsers
-    window.alert(quizContent);
-    
-    // For demo purposes, mark as completed after "taking" the quiz
-    quiz.completed = true;
+    setSelectedQuiz(quiz);
+    setQuizOpen(true);
   };
 
   // Enhanced function to open a study session
@@ -537,6 +786,9 @@ export default function StudyRoadmap() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Quiz Modal */}
+      <QuizModal isOpen={quizOpen} setIsOpen={setQuizOpen} quiz={selectedQuiz} />
     </div>
   );
 } 
