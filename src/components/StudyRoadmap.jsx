@@ -95,7 +95,7 @@ export default function StudyRoadmap() {
       duration: "15:24",
       channel: "OS Academy",
       topic: "CPU Scheduling",
-      url: "#"
+      url: "https://www.youtube.com/watch?v=2h3eWaPx8SA"
     },
     {
       id: 2,
@@ -104,7 +104,7 @@ export default function StudyRoadmap() {
       duration: "12:07",
       channel: "Computer Science Hub",
       topic: "Deadlocks",
-      url: "#"
+      url: "https://www.youtube.com/watch?v=UVo9mGARkhQ"
     },
     {
       id: 3,
@@ -113,7 +113,7 @@ export default function StudyRoadmap() {
       duration: "18:35",
       channel: "Tech Learning",
       topic: "Memory Management",
-      url: "#"
+      url: "https://www.youtube.com/watch?v=qdkxXygc3rE"
     },
     {
       id: 4,
@@ -122,7 +122,7 @@ export default function StudyRoadmap() {
       duration: "20:12",
       channel: "OS Academy",
       topic: "File Systems",
-      url: "#"
+      url: "https://www.youtube.com/watch?v=KN8YgJnShPM"
     }
   ];
   
@@ -173,28 +173,28 @@ export default function StudyRoadmap() {
       title: "CPU Scheduling Algorithms Cheat Sheet",
       type: "PDF",
       topic: "CPU Scheduling",
-      url: "#"
+      url: "https://www.cs.uic.edu/~jbell/CourseNotes/OperatingSystems/6_CPU_Scheduling.html"
     },
     {
       id: 2,
       title: "Deadlocks Visual Guide",
       type: "Interactive",
       topic: "Deadlocks",
-      url: "#"
+      url: "https://deadlockempire.github.io/"
     },
     {
       id: 3,
       title: "Memory Management Handbook",
       type: "eBook",
       topic: "Memory Management",
-      url: "#"
+      url: "https://pages.cs.wisc.edu/~remzi/OSTEP/vm-intro.pdf"
     },
     {
       id: 4,
       title: "File Systems Architecture",
       type: "Article",
       topic: "File Systems",
-      url: "#"
+      url: "https://www.cs.princeton.edu/courses/archive/fall09/cos318/lectures/FileSystem.pdf"
     }
   ];
   
@@ -227,6 +227,52 @@ export default function StudyRoadmap() {
     if (type === "eBook") return <BookOpen className="h-4 w-4" />;
     if (type === "Article") return <FileText className="h-4 w-4" />;
     return <FileText className="h-4 w-4" />;
+  };
+
+  // Enhanced function to display a quiz modal with content
+  const openQuiz = (quiz) => {
+    // In a real app, this would navigate to a quiz page or open a modal
+    // For now, we'll use a more detailed alert
+    const message = `
+      Starting: ${quiz.title}
+      Topic: ${quiz.topic}
+      Difficulty: ${quiz.difficulty}
+      Questions: ${quiz.questions}
+      Time: ${quiz.timeEstimate}
+      
+      This would open the full quiz interface in a real implementation.
+    `;
+    alert(message);
+    
+    // For demo purposes, mark as completed after "taking" the quiz
+    quiz.completed = true;
+  };
+
+  // Enhanced function to open a study session
+  const startStudySession = (topic) => {
+    // First check if there's a video
+    const video = recommendedVideos.find(v => v.topic.includes(topic));
+    // Then check if there's a resource
+    const resource = resources.find(r => r.topic.includes(topic));
+    // Then check if there's a quiz
+    const quiz = quizzes.find(q => q.topic.includes(topic));
+    
+    const message = `
+      Study Session for: ${topic}
+      
+      Available Resources:
+      ${video ? `• Video: ${video.title} (will open in new tab)` : '• No videos available for this topic yet'}
+      ${resource ? `• Resource: ${resource.title} (will open in new tab)` : '• No resources available for this topic yet'}
+      ${quiz ? `• Quiz: ${quiz.title} (can be started after studying)` : '• No quizzes available for this topic yet'}
+      
+      Opening available resources...
+    `;
+    
+    alert(message);
+    
+    // Open resources in new tabs
+    if (video) window.open(video.url, "_blank");
+    if (resource) setTimeout(() => window.open(resource.url, "_blank"), 500);
   };
 
   return (
@@ -291,7 +337,7 @@ export default function StudyRoadmap() {
                                   <Button variant="outline" size="sm" className="gap-1" onClick={() => {
                                     const topic = session.topic;
                                     const quiz = quizzes.find(q => q.topic === topic);
-                                    if (quiz) alert(`Starting ${quiz.title}`);
+                                    if (quiz) openQuiz(quiz);
                                     else alert(`Study resources for ${topic} coming soon`);
                                   }}>
                                     Start <ArrowRight className="h-3 w-3" />
@@ -331,14 +377,14 @@ export default function StudyRoadmap() {
                       <div className="mt-3 flex gap-2">
                         <Button size="sm" variant="outline" className="gap-1" onClick={() => {
                           const video = recommendedVideos.find(v => v.topic === topic.name);
-                          if (video && video.url) window.open(video.url, "_blank");
+                          if (video && video.url) startStudySession(topic.name);
                           else alert(`Video for ${topic.name} coming soon`);
                         }}>
                           <Video className="h-3 w-3" /> Watch Video
                         </Button>
                         <Button size="sm" variant="outline" className="gap-1" onClick={() => {
                           const quiz = quizzes.find(q => q.topic === topic.name);
-                          if (quiz) alert(`Starting ${quiz.title} quiz`);
+                          if (quiz) openQuiz(quiz);
                           else alert(`Quiz for ${topic.name} coming soon`);
                         }}>
                           <FileText className="h-3 w-3" /> Practice Quiz
@@ -429,7 +475,7 @@ export default function StudyRoadmap() {
                           <Badge variant="outline" className={getTopicColor(quiz.topic)}>
                             {quiz.topic}
                           </Badge>
-                          <Button size="sm" className="gap-1" onClick={() => alert(`Starting ${quiz.title} quiz`)}>
+                          <Button size="sm" className="gap-1" onClick={() => openQuiz(quiz)}>
                             Start Quiz <ArrowRight className="h-3 w-3" />
                           </Button>
                         </div>
