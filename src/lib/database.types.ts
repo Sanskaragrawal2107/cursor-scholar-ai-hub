@@ -83,6 +83,7 @@ export interface Database {
           description: string | null;
           subject_topic: string | null;
           file_url: string | null;
+          file_path: string | null;
           due_date: string | null;
           created_at: string;
         };
@@ -93,6 +94,7 @@ export interface Database {
           description?: string | null;
           subject_topic?: string | null;
           file_url?: string | null;
+          file_path?: string | null;
           due_date?: string | null;
           created_at?: string;
         };
@@ -103,6 +105,7 @@ export interface Database {
           description?: string | null;
           subject_topic?: string | null;
           file_url?: string | null;
+          file_path?: string | null;
           due_date?: string | null;
           created_at?: string;
         };
@@ -114,9 +117,10 @@ export interface Database {
           student_id: string;
           content_text: string | null;
           file_url: string | null;
-          ai_analysis_status: 'pending' | 'processing' | 'completed' | 'failed';
+          file_path: string | null;
+          ai_analysis_status: 'pending' | 'processing' | 'completed' | 'failed' | null;
           ai_feedback: Json | null;
-          submitted_at: string;
+          submitted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -124,9 +128,10 @@ export interface Database {
           student_id: string;
           content_text?: string | null;
           file_url?: string | null;
-          ai_analysis_status?: 'pending' | 'processing' | 'completed' | 'failed';
+          file_path?: string | null;
+          ai_analysis_status?: 'pending' | 'processing' | 'completed' | 'failed' | null;
           ai_feedback?: Json | null;
-          submitted_at?: string;
+          submitted_at?: string | null;
         };
         Update: {
           id?: string;
@@ -134,9 +139,10 @@ export interface Database {
           student_id?: string;
           content_text?: string | null;
           file_url?: string | null;
-          ai_analysis_status?: 'pending' | 'processing' | 'completed' | 'failed';
+          file_path?: string | null;
+          ai_analysis_status?: 'pending' | 'processing' | 'completed' | 'failed' | null;
           ai_feedback?: Json | null;
-          submitted_at?: string;
+          submitted_at?: string | null;
         };
       };
       student_weak_topics: {
@@ -144,25 +150,28 @@ export interface Database {
           id: string;
           student_id: string;
           assignment_id: string;
-          topic_name: string;
+          topic_name: string | null;
           confidence_score: number | null;
-          identified_at: string;
+          ai_explanation: string | null;
+          created_at: string;
         };
         Insert: {
           id?: string;
           student_id: string;
           assignment_id: string;
-          topic_name: string;
+          topic_name?: string | null;
           confidence_score?: number | null;
-          identified_at?: string;
+          ai_explanation?: string | null;
+          created_at?: string;
         };
         Update: {
           id?: string;
           student_id?: string;
           assignment_id?: string;
-          topic_name?: string;
+          topic_name?: string | null;
           confidence_score?: number | null;
-          identified_at?: string;
+          ai_explanation?: string | null;
+          created_at?: string;
         };
       };
       personalized_recommendations: {
@@ -170,34 +179,40 @@ export interface Database {
           id: string;
           student_id: string;
           topic_id: string;
-          recommendation_type: 'youtube_video' | 'resource_link' | 'study_plan_item' | 'quiz';
-          title: string;
+          recommendation_type: 'youtube_video' | 'resource_link' | 'study_plan_item' | 'quiz' | null;
+          title: string | null;
           description: string | null;
           url: string | null;
           details: Json | null;
           created_at: string;
+          is_completed: boolean | null;
+          student_weak_topic_id: string | null;
         };
         Insert: {
           id?: string;
           student_id: string;
           topic_id: string;
-          recommendation_type: 'youtube_video' | 'resource_link' | 'study_plan_item' | 'quiz';
-          title: string;
+          recommendation_type?: 'youtube_video' | 'resource_link' | 'study_plan_item' | 'quiz' | null;
+          title?: string | null;
           description?: string | null;
           url?: string | null;
           details?: Json | null;
           created_at?: string;
+          is_completed?: boolean | null;
+          student_weak_topic_id?: string | null;
         };
         Update: {
           id?: string;
           student_id?: string;
           topic_id?: string;
-          recommendation_type?: 'youtube_video' | 'resource_link' | 'study_plan_item' | 'quiz';
-          title?: string;
+          recommendation_type?: 'youtube_video' | 'resource_link' | 'study_plan_item' | 'quiz' | null;
+          title?: string | null;
           description?: string | null;
           url?: string | null;
           details?: Json | null;
           created_at?: string;
+          is_completed?: boolean | null;
+          student_weak_topic_id?: string | null;
         };
       };
     };

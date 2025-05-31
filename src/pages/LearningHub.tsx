@@ -157,9 +157,18 @@ const LearningHub = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/study-roadmap')}
+              className="hover:bg-purple-50"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              View Study Roadmap
+            </Button>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                AI Learning Hub
+                UnliLearn Hub
               </h1>
               <p className="text-sm text-gray-600">Personalized resources for your learning journey</p>
             </div>

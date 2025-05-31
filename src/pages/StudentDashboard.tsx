@@ -26,7 +26,7 @@ interface Assignment {
   title: string;
   description: string | null;
   due_date: string | null;
-  classrooms: { name: string } | null;
+  classrooms: { name: string; id: string } | null;
 }
 
 interface WeakTopic {
@@ -139,6 +139,21 @@ const StudentDashboard = () => {
     }
   };
 
+  const isDueSoon = (dueDate: string | null) => {
+    if (!dueDate) return false;
+    const due = new Date(dueDate);
+    const now = new Date();
+    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays <= 3 && diffDays >= 0;
+  };
+
+  const isOverdue = (dueDate: string | null) => {
+    if (!dueDate) return false;
+    const due = new Date(dueDate);
+    const now = new Date();
+    return due < now;
+  };
+
   // Redirect if not a student
   if (user && userMetadata?.role !== 'student') {
     navigate('/');
@@ -193,11 +208,11 @@ const StudentDashboard = () => {
               </DialogContent>
             </Dialog>
             <Button 
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              onClick={() => navigate('/learning-hub')}
+              className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700"
+              onClick={() => navigate('/study-roadmap')}
             >
-              <Brain className="h-4 w-4 mr-2" />
-              Learning Hub
+              <BookOpen className="h-4 w-4 mr-2" />
+              Study Roadmap
             </Button>
           </div>
         </div>
@@ -234,7 +249,12 @@ const StudentDashboard = () => {
               <div className="text-3xl font-bold text-red-600">
                 {loading ? '...' : weakTopics.length}
               </div>
-              <p className="text-sm text-gray-600 mt-1">Need improvement</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {loading ? 'Loading...' : weakTopics.length === 0 
+                  ? 'No weak topics identified yet' 
+                  : `${weakTopics.length} topics need attention`
+                }
+              </p>
             </CardContent>
           </Card>
 
@@ -242,21 +262,70 @@ const StudentDashboard = () => {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center">
                 <Award className="h-5 w-5 mr-2 text-green-600" />
-                Recommendations
+                Resources
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">
                 {loading ? '...' : recommendations.length}
               </div>
-              <p className="text-sm text-gray-600 mt-1">Personalized for you</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {loading ? 'Loading...' : recommendations.length === 0
+                  ? 'No personalized resources yet'
+                  : `${recommendations.length} recommended resources`
+                }
+              </p>
             </CardContent>
           </Card>
         </div>
 
+        {/* Main Dashboard Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
+          {/* Left Column (span 2 columns) */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Personalized Recommendations */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Award className="h-5 w-5 mr-2 text-green-600" />
+                  Recommendations
+                </CardTitle>
+                <CardDescription>Resources curated based on your needs</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="py-4 text-center text-gray-500">Loading recommendations...</div>
+                ) : recommendations.length === 0 ? (
+                  <div className="py-4 text-center text-gray-500">
+                    <p>No recommendations yet</p>
+                    <p className="text-xs mt-1">Submit assignments to get personalized recommendations</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recommendations.slice(0, 5).map(rec => (
+                      <div key={rec.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md transition-colors cursor-pointer">
+                        <div className="bg-gray-100 p-2 rounded-md text-purple-600">
+                          {getTypeIcon(rec.recommendation_type)}
+                        </div>
+                        <div className="flex-grow">
+                          <h4 className="text-sm font-medium">{rec.title}</h4>
+                          {rec.student_weak_topics && (
+                            <p className="text-xs text-gray-600">{rec.student_weak_topics.topic_name}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {recommendations.length > 5 && (
+                      <Button variant="ghost" className="w-full text-sm mt-2" onClick={() => navigate('/learning-hub')}>
+                        View All {recommendations.length} Resources
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* My Classrooms */}
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">My Classrooms</h2>
